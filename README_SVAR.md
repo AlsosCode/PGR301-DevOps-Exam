@@ -92,8 +92,8 @@ GitHub Actions workflow kjører automatisk ved endringer i `infra-s3/` eller wor
 
 #### Leveranser
 
-- **API Gateway URL:** [Vil bli fylt ut etter deployment]
-- **S3 objekt:** [Vil bli fylt ut etter testing]
+- **API Gateway URL:** https://8z9glu80ta.execute-api.eu-west-1.amazonaws.com/Prod/analyze/
+- **S3 objekt:** [Vil bli fylt ut etter testing - sjekk s3://kandidat-6-data/midlertidig/ etter API test]
 
 #### Implementasjon
 
@@ -111,8 +111,8 @@ Applikasjonen bruker AWS Comprehend for sentimentanalyse og lagrer resultater un
 #### Leveranser
 
 - **Workflow-fil:** [.github/workflows/sam-deploy.yml](.github/workflows/sam-deploy.yml)
-- **Successful deploy:** [Sett inn lenke til vellykket deployment]
-- **PR validation:** [Sett inn lenke til PR med kun validering]
+- **Successful deploy:** https://github.com/AlsosCode/PGR301-DevOps-Exam/actions/runs/[WORKFLOW_RUN_ID]
+- **PR validation:** [Vil bli opprettet når vi tester PR-funksjonalitet]
 
 #### Implementerte forbedringer
 
