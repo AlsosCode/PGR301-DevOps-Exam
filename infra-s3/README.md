@@ -2,6 +2,8 @@
 
 This directory contains Terraform configuration for provisioning the S3 bucket used to store AiAlpha sentiment analysis results.
 
+**Candidate:** 6
+
 ## Overview
 
 The infrastructure creates:
