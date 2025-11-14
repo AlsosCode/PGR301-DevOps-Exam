@@ -25,7 +25,7 @@
 #### S3 Bucket
 - **Bucket navn:** `kandidat-6-data`
 - **Region:** `eu-west-1`
-- **Backend state:** `s3://pgr301-terraform-state/infra-s3/terraform.tfstate`
+- **Backend state:** Local state (S3 backend deaktivert grunnet tilgangsbegrensninger)
 
 ### Implementasjonsdetaljer
 
