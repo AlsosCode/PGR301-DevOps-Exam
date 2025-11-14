@@ -1,44 +1,126 @@
 name: Deploy SAM Application
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'sam-comprehend/**'
   pull_request:
     branches:
       - main
     paths:
       - 'sam-comprehend/**'
+      - '.github/workflows/sam-deploy.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'sam-comprehend/**'
+      - '.github/workflows/sam-deploy.yml'
+
+env:
+  AWS_REGION: eu-west-1
+  STACK_NAME: aialpha-sentiment-kandidat-6
+  S3_BUCKET: kandidat-6-data
 
 jobs:
-  deploy:
+  validate-and-build:
+    name: Validate and Build SAM Application
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./sam-comprehend
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'
 
       - name: Set up SAM CLI
         uses: aws-actions/setup-sam@v2
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Deploy SAM application
+      - name: SAM Validate
+        run: sam validate
+
+      - name: SAM Build
+        run: sam build
+
+      - name: Upload build artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sam-build
+          path: sam-comprehend/.aws-sam/build/
+
+  deploy:
+    name: Deploy to AWS
+    needs: validate-and-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
         working-directory: ./sam-comprehend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: sam-build
+          path: sam-comprehend/.aws-sam/build/
+
+      - name: SAM Deploy
         run: |
           sam deploy \
-            --stack-name aialpha-sentiment-glennbech \
+            --stack-name ${{ env.STACK_NAME }} \
+            --s3-bucket ${{ env.S3_BUCKET }} \
+            --s3-prefix sam-deployments \
+            --region ${{ env.AWS_REGION }} \
+            --capabilities CAPABILITY_IAM \
             --no-confirm-changeset \
-            --no-fail-on-empty-changeset
+            --no-fail-on-empty-changeset \
+            --parameter-overrides S3BucketName=${{ env.S3_BUCKET }}
+
+      - name: Get API Gateway URL
+        id: get-url
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`SentimentAnalysisApi`].OutputValue' \
+            --output text)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "### Deployment Successful! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**API Gateway URL:** $API_URL" >> $GITHUB_STEP_SUMMARY
+
+      - name: Test API Endpoint
+        run: |
+          echo "Testing API endpoint..."
+          curl -X POST ${{ steps.get-url.outputs.api_url }} \
+            -H "Content-Type: application/json" \
+            -d '{"text": "Apple launches groundbreaking new AI features while Microsoft faces security concerns."}'
