@@ -93,6 +93,9 @@ jobs:
           name: sam-build
           path: sam-comprehend/.aws-sam/build/
 
+      - name: SAM Build (rebuild for deploy)
+        run: sam build
+
       - name: SAM Deploy
         run: |
           sam deploy \
