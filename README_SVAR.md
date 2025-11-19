@@ -226,8 +226,9 @@ FROM amazoncorretto:21-alpine
 #### Leveranser
 
 - **Workflow-fil:** [.github/workflows/docker-build.yml](.github/workflows/docker-build.yml)
-- **Successful build:** [Sett inn lenke etter første kjøring]
+- **Successful build:** https://github.com/AlsosCode/PGR301-DevOps-Exam/actions/workflows/docker-build.yml
 - **Container image:** `alsoscode/sentiment-docker:latest`
+- **Docker Hub Repository:** https://hub.docker.com/r/alsoscode/sentiment-docker
 
 #### Tagging-strategi
 
