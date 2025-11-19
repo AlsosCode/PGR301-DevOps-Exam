@@ -254,7 +254,154 @@ FROM amazoncorretto:21-alpine
 
 ## Oppgave 4 - Observabilitet, Metrikksamling og Overvåkningsinfrastruktur (25 poeng)
 
-[Kommer snart...]
+### Del A (15p): Implementasjon av Custom Metrics
+
+#### Leveranser
+
+- **Kode:** [sentiment-docker/src/main/java/com/aialpha/sentiment/metrics/SentimentMetrics.java](sentiment-docker/src/main/java/com/aialpha/sentiment/metrics/SentimentMetrics.java)
+- **Config:** [sentiment-docker/src/main/java/com/aialpha/sentiment/config/MetricsConfig.java](sentiment-docker/src/main/java/com/aialpha/sentiment/config/MetricsConfig.java)
+- **CloudWatch Screenshots:** [Kommer etter deployment]
+
+#### Implementerte Metrikker
+
+Jeg har implementert tre custom metrikker i tillegg til den eksisterende Counter-metrikken:
+
+**1. Timer - AWS Bedrock API Response Time**
+```java
+public void recordDuration(long milliseconds, String company, String model) {
+    Timer.builder("sentiment.bedrock.duration")
+        .tag("company", company)
+        .tag("model", model)
+        .description("AWS Bedrock API response time in milliseconds")
+        .register(meterRegistry)
+        .record(milliseconds, TimeUnit.MILLISECONDS);
+}
+```
+
+**Begrunnelse:** Timer er det riktige instrumentet for å måle tidsbruk av operasjoner med klar start og slutt. AWS Bedrock API-kall har tydelig definert varighet, og Timer gir oss automatisk count, sum, max og mean, samt persentiler. Dette er kritisk for å oppdage ytelsesproblemer i AI-analysen.
+
+**2. Gauge - Companies Detected Count**
+```java
+private final AtomicInteger companiesDetectedCount;
+
+// I konstruktør:
+this.companiesDetectedCount = new AtomicInteger(0);
+meterRegistry.gauge("sentiment.companies.detected", companiesDetectedCount);
+
+public void recordCompaniesDetected(int count) {
+    companiesDetectedCount.set(count);
+}
+```
+
+**Begrunnelse:** Gauge er perfekt for verdier som kan variere både opp og ned. Antall selskaper funnet i siste analyse er ikke kumulativt - det endres med hver ny analyse. Gauge lar oss observere denne fluktuerende verdien, noe som kan indikere tekstkompleksitet eller datakvalitet.
+
+**3. DistributionSummary - Confidence Scores**
+```java
+public void recordConfidence(double confidence, String sentiment, String company) {
+    DistributionSummary.builder("sentiment.confidence.score")
+        .tag("sentiment", sentiment)
+        .tag("company", company)
+        .description("Distribution of confidence scores for sentiment analysis")
+        .baseUnit("score")
+        .register(meterRegistry)
+        .record(confidence);
+}
+```
+
+**Begrunnelse:** DistributionSummary er ideell for å analysere spredning av numeriske verdier. Konfidensscorer ligger mellom 0.0 og 1.0, og vi trenger å forstå fordelingen - er de konsistent høye? Har vi mange lave scorer? DistributionSummary gir oss count, sum, max, og kan konfigureres med persentiler for dypere analyse.
+
+#### Tekniske Implementasjonsdetaljer
+
+**MetricsConfig Endringer:**
+- Oppdatert CloudWatch namespace fra `"SentimentApp"` til `"kandidat-6"`
+- Beholder 5-sekunders publiseringsintervall for rask feedback
+
+**Integrasjon:**
+Metrikkene kalles automatisk fra `SentimentController.java` etter hver analyse:
+```java
+long duration = System.currentTimeMillis() - startTime;
+sentimentMetrics.recordCompaniesDetected(companies.size());
+for (CompanySentiment company : companies) {
+    sentimentMetrics.recordAnalysis(company.getSentiment(), company.getCompany());
+    sentimentMetrics.recordConfidence(company.getConfidence(), company.getSentiment(), company.getCompany());
+    sentimentMetrics.recordDuration(duration, company.getCompany(), bedrockService.getModelId());
+}
+```
+
+### Del B (10p): Infrastruktur for Visualisering og Alarmering
+
+#### Leveranser
+
+- **Terraform-kode:** [infra-cloudwatch/](infra-cloudwatch/)
+- **Dashboard Screenshot:** [Kommer etter deployment]
+- **Alarm Screenshot:** [Kommer etter testing]
+- **E-post Screenshot:** [Kommer etter alarm trigger]
+
+#### Terraform Implementasjon
+
+**Opprettede Ressurser:**
+
+**1. CloudWatch Dashboard** (`aws_cloudwatch_dashboard`)
+Fire widgets for visualisering:
+- **Sentiment Analysis Requests**: LineGraph - Total analyser over tid
+- **AWS Bedrock API Response Time**: LineGraph - Avg/Max/Min responstid
+- **Confidence Score Distribution**: LineGraph - Konfidensscorer (0-1 range)
+- **Companies Detected**: Number/LineGraph - Gauge-verdi
+
+**2. CloudWatch Alarms** (`aws_cloudwatch_metric_alarm`)
+
+**High Response Time Alarm:**
+- **Metrikk:** `sentiment.bedrock.duration`
+- **Terskel:** 5000ms (5 sekunder)
+- **Evaluering:** 2 perioder à 60 sekunder
+- **Begrunnelse:** Bedrock API skal normalt respondere under 3 sekunder. 5 sekunder indikerer ytelsesproblemer som krever oppmerksomhet.
+
+**Low Confidence Alarm:**
+- **Metrikk:** `sentiment.confidence.score`
+- **Terskel:** 0.5 (50%)
+- **Evaluering:** 2 perioder à 300 sekunder
+- **Begrunnelse:** Gjennomsnittlig konfidenscore under 50% indikerer dårlig datakvalitet eller modellproblemer. Dette påvirker analysepåliteligheten.
+
+**3. SNS Topic og Subscription**
+- **Topic:** `kandidat-6-sentiment-alarms`
+- **Protocol:** Email
+- **Endpoint:** [Settes i terraform.tfvars]
+
+#### Deployment Instruksjoner
+
+```bash
+cd infra-cloudwatch
+cp terraform.tfvars.example terraform.tfvars
+# Rediger terraform.tfvars og sett alarm_email
+
+terraform init
+terraform plan
+terraform apply
+```
+
+**Etter deployment:**
+1. Sjekk e-post og bekreft SNS subscription
+2. Start Docker container for å generere metrikker
+3. Vent 5-10 minutter for metrikker å propagere til CloudWatch
+4. Åpne Dashboard URL fra Terraform output
+
+#### Testing
+
+**Generere metrikker:**
+```bash
+docker run -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+  -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+  -e S3_BUCKET_NAME=kandidat-6-data \
+  -p 8080:8080 \
+  alsoscode/sentiment-docker:latest
+```
+
+**Teste API:**
+```bash
+curl -X POST http://localhost:8080/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"requestId": "test-1", "text": "NVIDIA soars on strong earnings while Intel struggles with declining sales"}'
+```
 
 ---
 
