@@ -34,10 +34,10 @@ public class MetricsConfig {
 
     private CloudWatchConfig setupCloudWatchConfig() {
         return new CloudWatchConfig() {
-            // TODO: VIKTIG! Endre "SentimentApp" til ditt kandidatnummer (f.eks. "kandidat123")
-            // Du MÅ bruke SAMME namespace når du lager CloudWatch Dashboard i Terraform!
+            // Namespace set to kandidat-6 for CloudWatch metrics
+            // Using SAME namespace in CloudWatch Dashboard Terraform configuration
             private Map<String, String> configuration = Map.of(
-                    "cloudwatch.namespace", "SentimentApp",
+                    "cloudwatch.namespace", "kandidat-6",
                     "cloudwatch.step", Duration.ofSeconds(5).toString());
 
             @Override
