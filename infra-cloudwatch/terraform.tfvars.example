@@ -1,0 +1,13 @@
+# CloudWatch Infrastructure Configuration
+# Copy this file to terraform.tfvars and update with your values
+
+# Required: Your email for alarm notifications
+alarm_email = "your-email@example.com"
+
+# Optional: Customize thresholds
+response_time_threshold = 5000  # 5 seconds in milliseconds
+confidence_threshold    = 0.5   # 50% confidence minimum
+
+# Optional: Change candidate ID if different
+candidate_id         = "kandidat-6"
+cloudwatch_namespace = "kandidat-6"  # Must match MetricsConfig.java
