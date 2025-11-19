@@ -131,3 +131,4 @@ The application exports custom metrics to CloudWatch:
 - Confidence score distributions
 
 See Task 4 documentation for detailed metrics configuration.
+# Trigger Docker build
