@@ -185,7 +185,69 @@ Workflowen tester også automatisk endepunktet etter deployment og viser resulta
 
 ## Oppgave 3 - Container og Docker (25 poeng)
 
-[Kommer snart...]
+### Del A (10p): Containeriser Spring Boot-applikasjonen
+
+#### Leveranser
+
+- **Dockerfile:** [sentiment-docker/Dockerfile](sentiment-docker/Dockerfile)
+- **Docker Hub Repository:** https://hub.docker.com/r/alsoscode/sentiment-docker
+
+#### Implementasjon
+
+Dockerfilen bruker **multi-stage build** for optimal imagestørrelse og effektivitet:
+
+**Build Stage (Maven + Java 21):**
+```dockerfile
+FROM maven:3.9-amazoncorretto-21 AS build
+```
+- Bruker Maven for å bygge applikasjonen
+- Dependency caching for raskere rebuilds
+- Kompilerer og pakker Spring Boot applikasjonen
+
+**Runtime Stage (Corretto Alpine):**
+```dockerfile
+FROM amazoncorretto:21-alpine
+```
+- Minimal Alpine-basert runtime image
+- Non-root user (`spring:spring`) for sikkerhet
+- JVM container support aktivert
+- Health check konfigurert
+- Eksponerer port 8080
+
+**Sikkerhetsfeatures:**
+- ✅ Non-root user execution
+- ✅ Minimal Alpine base image
+- ✅ Health checks for container orchestration
+- ✅ Environment-based secrets
+- ✅ JVM tuned for containers
+
+### Del B (15p): GitHub Actions workflow for Docker Hub
+
+#### Leveranser
+
+- **Workflow-fil:** [.github/workflows/docker-build.yml](.github/workflows/docker-build.yml)
+- **Successful build:** [Sett inn lenke etter første kjøring]
+- **Container image:** `alsoscode/sentiment-docker:latest`
+
+#### Tagging-strategi
+
+**Multi-tag strategi** for fleksibilitet og sporbarhet:
+
+1. **`latest`** - Alltid siste build fra main
+2. **`kandidat-6`** - Kandidatspesifikk tag
+3. **`kandidat-6-sha-<commit>`** - Commit-spesifikke tags for full traceability
+
+**Hvorfor denne strategien?**
+- `latest` gir alltid nyeste versjon
+- `kandidat-6` gjør det enkelt for sensor
+- SHA-tags gir full sporbarhet til eksakt commit
+
+#### Instruksjoner til sensor
+
+1. Opprett Docker Hub konto og access token
+2. Legg til GitHub Secrets: `DOCKER_USERNAME` og `DOCKER_TOKEN`
+3. Oppdater image navn i workflow
+4. Push til `sentiment-docker/` for å trigge build
 
 ---
 
