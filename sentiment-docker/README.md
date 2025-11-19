@@ -134,3 +134,4 @@ See Task 4 documentation for detailed metrics configuration.
 # Trigger Docker build
 
 # Ready for deployment
+# Trigger with new token
