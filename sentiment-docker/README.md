@@ -132,3 +132,4 @@ The application exports custom metrics to CloudWatch:
 
 See Task 4 documentation for detailed metrics configuration.
 # Trigger Docker build
+
