@@ -40,12 +40,15 @@ resource "aws_cloudwatch_dashboard" "sentiment_app" {
         type = "metric"
         properties = {
           metrics = [
-            ["${var.cloudwatch_namespace}", "sentiment.analysis.total", { stat = "Sum", label = "Total Analyses" }]
+            ["${var.cloudwatch_namespace}", "sentiment.analysis.total.count", "company", "Apple", "sentiment", "POSITIVE", { stat = "Sum", label = "Apple (Positive)" }],
+            ["...", ".", ".", "Tesla", ".", ".", { stat = "Sum", label = "Tesla (Positive)" }],
+            ["...", ".", ".", "Google", ".", ".", { stat = "Sum", label = "Google (Positive)" }],
+            ["...", ".", ".", "Meta", ".", "NEGATIVE", { stat = "Sum", label = "Meta (Negative)" }]
           ]
           period = 300
           stat   = "Sum"
           region = var.aws_region
-          title  = "Sentiment Analysis Requests"
+          title  = "Sentiment Analysis Requests (Counter)"
           yAxis = {
             left = {
               min = 0
@@ -61,14 +64,15 @@ resource "aws_cloudwatch_dashboard" "sentiment_app" {
         type = "metric"
         properties = {
           metrics = [
-            ["${var.cloudwatch_namespace}", "sentiment.bedrock.duration", { stat = "Average", label = "Avg Response Time" }],
-            ["...", { stat = "Maximum", label = "Max Response Time" }],
-            ["...", { stat = "Minimum", label = "Min Response Time" }]
+            ["${var.cloudwatch_namespace}", "sentiment.bedrock.duration.avg", "company", "Apple", "model", "amazon.nova-micro-v1:0", { stat = "Average", label = "Apple Avg (ms)" }],
+            ["...", ".", ".", "Tesla", ".", ".", { stat = "Average", label = "Tesla Avg (ms)" }],
+            ["...", ".", ".", "Google", ".", ".", { stat = "Average", label = "Google Avg (ms)" }],
+            ["${var.cloudwatch_namespace}", "sentiment.bedrock.duration.max", "company", "Apple", "model", "amazon.nova-micro-v1:0", { stat = "Maximum", label = "Apple Max (ms)" }]
           ]
           period = 300
           stat   = "Average"
           region = var.aws_region
-          title  = "AWS Bedrock API Response Time (ms)"
+          title  = "AWS Bedrock API Response Time (Timer)"
           yAxis = {
             left = {
               min = 0
@@ -84,14 +88,15 @@ resource "aws_cloudwatch_dashboard" "sentiment_app" {
         type = "metric"
         properties = {
           metrics = [
-            ["${var.cloudwatch_namespace}", "sentiment.confidence.score", { stat = "Average", label = "Avg Confidence" }],
-            ["...", { stat = "Minimum", label = "Min Confidence" }],
-            ["...", { stat = "Maximum", label = "Max Confidence" }]
+            ["${var.cloudwatch_namespace}", "sentiment.confidence.score.avg", "company", "Apple", "sentiment", "POSITIVE", { stat = "Average", label = "Apple Avg Score" }],
+            ["...", ".", ".", "Tesla", ".", ".", { stat = "Average", label = "Tesla Avg Score" }],
+            ["...", ".", ".", "Google", ".", ".", { stat = "Average", label = "Google Avg Score" }],
+            ["${var.cloudwatch_namespace}", "sentiment.confidence.score.max", "company", "Apple", "sentiment", "POSITIVE", { stat = "Maximum", label = "Apple Max Score" }]
           ]
           period = 300
           stat   = "Average"
           region = var.aws_region
-          title  = "Confidence Score Distribution"
+          title  = "Confidence Score (DistributionSummary)"
           yAxis = {
             left = {
               min = 0
@@ -108,7 +113,7 @@ resource "aws_cloudwatch_dashboard" "sentiment_app" {
         type = "metric"
         properties = {
           metrics = [
-            ["${var.cloudwatch_namespace}", "sentiment.companies.detected", { stat = "Average", label = "Companies Detected" }]
+            ["${var.cloudwatch_namespace}", "sentiment.companies.detected.value", { stat = "Average", label = "Companies Detected" }]
           ]
           period = 300
           stat   = "Average"
@@ -134,7 +139,7 @@ resource "aws_cloudwatch_metric_alarm" "high_response_time" {
   alarm_name          = "${var.candidate_id}-high-bedrock-response-time"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
-  metric_name         = "sentiment.bedrock.duration"
+  metric_name         = "sentiment.bedrock.duration.avg"
   namespace           = var.cloudwatch_namespace
   period              = 60
   statistic           = "Average"
@@ -157,13 +162,18 @@ resource "aws_cloudwatch_metric_alarm" "low_confidence" {
   alarm_name          = "${var.candidate_id}-low-confidence-scores"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 2
-  metric_name         = "sentiment.confidence.score"
+  metric_name         = "sentiment.confidence.score.avg"
   namespace           = var.cloudwatch_namespace
   period              = 300
   statistic           = "Average"
   threshold           = var.confidence_threshold
   alarm_description   = "Triggers when average confidence score falls below ${var.confidence_threshold}"
   treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    company   = "Apple"
+    sentiment = "POSITIVE"
+  }
 
   alarm_actions = [aws_sns_topic.cloudwatch_alarms.arn]
   ok_actions    = [aws_sns_topic.cloudwatch_alarms.arn]

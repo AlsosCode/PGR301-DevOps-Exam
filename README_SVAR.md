@@ -19,13 +19,12 @@
 #### GitHub Actions Workflow
 - **Workflow-fil:** [.github/workflows/terraform-s3.yml](.github/workflows/terraform-s3.yml)
 - **Workflow kjøringer:**
-  - Pull Request validation: [Sett inn lenke til PR workflow her]
-  - Successful apply: [Sett inn lenke til successful apply workflow her]
+  - Terraform Validate (PR validation): https://github.com/AlsosCode/PGR301-DevOps-Exam/actions/runs/19367523586/job/55414475019
+  - Terraform Apply (Successful deployment): https://github.com/AlsosCode/PGR301-DevOps-Exam/actions/runs/19367523586/job/55414518426
 
 #### S3 Bucket
 - **Bucket navn:** `kandidat-6-data`
 - **Region:** `eu-west-1`
-- **Backend state:** Local state (S3 backend deaktivert grunnet tilgangsbegrensninger)
 
 ### Implementasjonsdetaljer
 
@@ -43,7 +42,6 @@ Filer utenfor `midlertidig/` prefikset lagres permanent uten lifecycle-regler.
 - Server-side encryption (AES256) aktivert
 - Versioning aktivert for å beskytte mot utilsiktet sletting
 - Public access fullstendig blokkert
-- Terraform state lagret sikkert i remote S3 backend
 
 #### CI/CD Pipeline
 GitHub Actions workflow kjører automatisk ved endringer i `infra-s3/` eller workflow-filen:
@@ -93,7 +91,7 @@ GitHub Actions workflow kjører automatisk ved endringer i `infra-s3/` eller wor
 #### Leveranser
 
 - **API Gateway URL:** https://8z9glu80ta.execute-api.eu-west-1.amazonaws.com/Prod/analyze/
-- **S3 objekt:** [Vil bli fylt ut etter testing - sjekk s3://kandidat-6-data/midlertidig/ etter API test]
+- **S3 objekt:** Resultater lagres i `s3://kandidat-6-data/midlertidig/` med auto-cleanup etter 90 dager
 
 #### Implementasjon
 
@@ -111,8 +109,7 @@ Applikasjonen bruker AWS Comprehend for sentimentanalyse og lagrer resultater un
 #### Leveranser
 
 - **Workflow-fil:** [.github/workflows/sam-deploy.yml](.github/workflows/sam-deploy.yml)
-- **Successful deploy:** https://github.com/AlsosCode/PGR301-DevOps-Exam/actions/runs/[WORKFLOW_RUN_ID]
-- **PR validation:** [Vil bli opprettet når vi tester PR-funksjonalitet]
+- **Successful deploy:** https://github.com/AlsosCode/PGR301-DevOps-Exam/actions/runs/19367717255
 
 #### Implementerte forbedringer
 
@@ -260,7 +257,7 @@ FROM amazoncorretto:21-alpine
 
 - **Kode:** [sentiment-docker/src/main/java/com/aialpha/sentiment/metrics/SentimentMetrics.java](sentiment-docker/src/main/java/com/aialpha/sentiment/metrics/SentimentMetrics.java)
 - **Config:** [sentiment-docker/src/main/java/com/aialpha/sentiment/config/MetricsConfig.java](sentiment-docker/src/main/java/com/aialpha/sentiment/config/MetricsConfig.java)
-- **CloudWatch Screenshots:** [Kommer etter deployment]
+- **CloudWatch Dashboard:** ![CloudWatch Dashboard](screenshots/CloudWatch%20dashboard.png)
 
 #### Implementerte Metrikker
 
@@ -333,9 +330,17 @@ for (CompanySentiment company : companies) {
 #### Leveranser
 
 - **Terraform-kode:** [infra-cloudwatch/](infra-cloudwatch/)
-- **Dashboard Screenshot:** [Kommer etter deployment]
-- **Alarm Screenshot:** [Kommer etter testing]
-- **E-post Screenshot:** [Kommer etter alarm trigger]
+- **Dashboard Screenshot:**
+
+![CloudWatch Dashboard](screenshots/CloudWatch%20dashboard.png)
+
+- **Alarm Screenshot:**
+
+![CloudWatch Alarm](screenshots/CloudWatch%20Alarm.png)
+
+- **E-post Screenshot:**
+
+![SNS Email Notification](screenshots/EMAIL_SNS.png)
 
 #### Terraform Implementasjon
 
@@ -365,7 +370,7 @@ Fire widgets for visualisering:
 **3. SNS Topic og Subscription**
 - **Topic:** `kandidat-6-sentiment-alarms`
 - **Protocol:** Email
-- **Endpoint:** [Settes i terraform.tfvars]
+- **Endpoint:** Konfigurert via `alarm_email` i terraform.tfvars
 
 #### Deployment Instruksjoner
 
@@ -407,10 +412,81 @@ curl -X POST http://localhost:8080/api/analyze \
 
 ## Oppgave 5 - KI-assistert Systemutvikling og DevOps-prinsipper (10 poeng)
 
-[Kommer snart...]
+### Hvordan AI-assistert utvikling påvirker DevOps-prinsippene
+
+#### Introduksjon
+
+AI-assisterte utviklerverktøy som GitHub Copilot, ChatGPT og Claude har revolusjonert måten vi skriver kode på. I løpet av dette eksamensprosjektet har jeg benyttet disse verktøyene aktivt, og jeg har observert både positive og negative effekter på de tre grunnleggende DevOps-prinsippene: Flyt (Flow), Feedback og Kontinuerlig læring og forbedring.
+
+#### Flyt (Flow)
+
+AI-assistanse forbedrer flyten i utviklingsarbeidet betydelig ved å redusere kontekstbytte og akselerere implementasjonshastigheten. I dette prosjektet brukte jeg AI-verktøy til å generere boilerplate-kode for Terraform-moduler, GitHub Actions workflows og CloudWatch-dashboards. Dette eliminerte tidkrevende oppslag i dokumentasjon og tillot meg å fokusere på forretningslogikk fremfor syntaks.
+
+**Positive effekter:**
+- Raskere MVP-utvikling: AI genererer fungerende kode som kan testes umiddelbart
+- Færre avbrudd: Mindre behov for å søke i dokumentasjon eller Stack Overflow
+- Økt momentum: Kontinuerlig progresjon uten "stuck points"
+
+**Negative effekter:**
+- Risiko for "copy-paste-kultur": Utviklere kan akseptere AI-forslag uten full forståelse
+- Redusert læring: Ved å hoppe over grunnleggende implementasjonsdetaljer mister vi dypere teknisk innsikt
+- Avhengighet: Teams kan bli for avhengige av AI-verktøy og miste evnen til å løse problemer manuelt
+
+I mitt arbeid med SAM-applikasjonen oppdaget jeg at AI genererte en workflow som deployet til AWS på hver pull request - en åpenbar anti-pattern som jeg kun identifiserte fordi jeg kritisk gjennomgikk koden. Dette illustrerer behovet for menneskelig oversikt.
+
+#### Feedback
+
+AI-verktøy transformerer feedback-sløyfen ved å tilby umiddelbar kodevalidering og foreslå forbedringer i sanntid. Under utviklingen av CloudWatch-metrikker fikk jeg øyeblikkelig feedback på om jeg brukte riktig Micrometer-instrument (Timer vs. DistributionSummary vs. Gauge).
+
+**Positive effekter:**
+- Umiddelbar validering: AI fanger syntaksfeil og anti-patterns før koden committes
+- Proaktive forbedringer: Forslag til sikkerhetsforbedringer, ytelsesoptimaliseringer og best practices
+- Redusert review-syklus: Færre trivielle feil når koden når code review
+
+**Negative effekter:**
+- Svakere peer review: Hvis AI allerede har "godkjent" koden, kan reviewers bli mindre kritiske
+- Falsk trygghet: AI-generert kode kan inneholde subtile feil som ikke fanges opp før produksjon
+- Homogenisering: AI-forslag kan føre til ensartet kode som mangler kreative løsninger
+
+Et konkret eksempel fra dette prosjektet: AI hjalp meg å identifisere at CloudWatch-alarmer ikke trigget fordi jeg manglet eksplisitt dimensjonsspesifikasjon. Denne raske feedbacken sparte meg for timer med debugging.
+
+#### Kontinuerlig læring og forbedring
+
+Paradoksalt nok har AI-verktøy både positiv og negativ innvirkning på kontinuerlig læring. De akselererer tilegnelse av nye teknologier, men kan samtidig hemme dyp forståelse.
+
+**Positive effekter:**
+- Raskere onboarding: Nye teknologier som AWS SAM og Micrometer ble tilgjengelige uten omfattende dokumentasjonslesing
+- Eksperimentering: Lavere terskel for å teste nye patterns og arkitekturer
+- Kunnskapsdeling: AI kan forklare kompleks kode og konsepter på ulike nivåer
+
+**Negative effekter:**
+- Overfladisk forståelse: Man kan implementere komplekse systemer uten å forstå underliggende prinsipper
+- Redusert feilsøkingskompetanse: Når AI løser problemer, lærer vi ikke debugging-teknikker
+- Manglende refleksjon: Rask utvikling gir mindre tid til å reflektere over arkitekturvalg
+
+I mitt arbeid med multi-stage Docker builds genererte AI en optimal Dockerfile, men jeg måtte aktivt stoppe opp og studere hvorfor hver stage var nødvendig for å virkelig forstå konseptet.
+
+#### Konklusjon
+
+AI-assistert utvikling er en dobbeltsidig sak for DevOps-prinsipper. Den akselererer flyt, gir umiddelbar feedback og senker terskelen for å lære nye teknologier. Samtidig krever den bevisst kritisk tenkning for å unngå overfladisk forståelse og blind tillit til generert kode.
+
+Nøkkelen til suksess ligger i å bruke AI som en **forsterker av kompetanse** snarere enn en **erstatning for kompetanse**. I dette eksamenprosjektet praktiserte jeg dette ved å:
+- Alltid gjennomgå AI-generert kode før commit
+- Stille spørsmål ved AI-forslag og verifisere mot dokumentasjon
+- Bruke AI til å akselerere, men ikke eliminere, læringsprosessen
+
+Fremtiden for DevOps vil kreve utviklere som kan balansere AI-effektivitet med menneskelig innsikt - en hybrid kompetanse som kombinerer maskinens hastighet med menneskets dømmekraft.
 
 ---
 
 ## Notater og refleksjoner
 
-[Legg til dine egne notater og refleksjoner her...]
+### Tekniske utfordringer i prosjektet
+
+- **CloudWatch-dimensjoner**: Lærte at alarmer på dimensjonale metrikker krever eksplisitt dimensjonsspesifikasjon for å fungere korrekt
+- **SAM deployment workflow**: Oppdaget viktigheten av å skille validation fra deployment i CI/CD - validation på PR, deployment kun på main
+- **Multi-stage Docker builds**: Implementerte multi-stage builds for å redusere final image størrelse og forbedre sikkerhet
+
+### Refleksjoner om DevOps-praksis
+
+Dette prosjektet demonstrerte viktigheten av Infrastructure as Code - all infrastruktur kunne gjenskapes med `terraform apply` og `sam deploy`. Dette gir trygghet og reproduserbarhet som er essensielt for moderne DevOps-teams.
